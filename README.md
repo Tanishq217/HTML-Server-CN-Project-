@@ -137,6 +137,23 @@ Architecture Summary
 
 To browse the flow quickly: start at `HttpServer.start()` (accept loop), then check `ThreadPool`, and finally the GET/POST handlers.
 
+How the code works (high level)
+------------------------------
+- The main entrypoint `main()` constructs `HttpServer(host, port, max_threads)` and calls `start()`.
+- The accept loop in `HttpServer.start()` creates a TCP listening socket, accepts connections, and enqueues each client socket into a small `ThreadPool` (with a bounded pending queue and periodic status logging). If the queue is over the safety limit, the server immediately returns `503 Service Unavailable`.
+- Worker threads (`Worker` inside the `ThreadPool`) call back into `HttpServer._serve_client`, which:
+  - reads request bytes with a timeout (30s) and a hard request cap (8192 bytes),
+  - parses the start-line, headers, and optional body via `parse_http_request`,
+  - validates the `Host` header with `is_host_allowed` and the URL path with `resolve_safe_path` to prevent traversal,
+  - routes by method: `GET` → `_handle_get`, `POST` → `_handle_post`, otherwise `405`.
+- GET handling (`_handle_get`):
+  - `.html` files are returned inline with `Content-Type: text/html; charset=utf-8`.
+  - `.png`, `.jpg/.jpeg`, `.txt` are returned as downloads using `Content-Type: application/octet-stream` and `Content-Disposition: attachment; filename="..."`.
+  - Large binaries are streamed in 8KB chunks after headers, keeping memory usage low and transfers efficient.
+- POST `/upload` (`_handle_post`): enforces `Content-Type: application/json`, parses JSON, writes it into `resources/uploads/upload_YYYYMMDD_HHMMSS_<id>.json`, and replies `201 Created` with a JSON body containing the virtual path.
+- Connection policy: default HTTP/1.1 keep‑alive (closes on HTTP/1.0 unless `Connection: keep-alive`, and on explicit `Connection: close`). Responses include `Keep-Alive: timeout=30, max=100`. Idle connections close after 30s; per-connection max is 100 requests.
+- Errors: malformed requests → `400`; forbidden paths/Host mismatch → `403`; missing files → `404`; unsupported methods → `405`; wrong media type → `415`; unexpected issues → `500`; saturated queue → `503` with `Retry-After`.
+
 Known Limitations
 -----------------
 - Minimal MIME type handling by extension only
