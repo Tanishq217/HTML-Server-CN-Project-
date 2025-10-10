@@ -1,20 +1,7 @@
 #!/usr/bin/env python3
-"""
-Multi-threaded HTTP/1.1 server (educational implementation)
 
-This server demonstrates:
-- Low-level TCP sockets and manual HTTP parsing (GET/POST only)
-- A simple fixed-size thread pool with a pending connection queue
-- Static file serving (HTML) and binary file download with correct headers
-- JSON uploads persisted to disk under resources/uploads/
-- Security hardening: Host header validation and path traversal protection
-- HTTP keep-alive with idle timeout and per-connection request limits
+# Multi-threaded HTTP/1.1 server (educational implementation)
 
-Notes for readers:
-- The goal is clarity and correctness, not maximum performance.
-- Error handling aims to be explicit and standards-aligned where practical.
-- Logging is verbose on purpose to aid in local testing and grading.
-"""
 import os
 import sys
 import socket
@@ -26,9 +13,9 @@ import datetime
 from typing import Dict, Tuple, Optional
 
 
-# ==========================
+
 # Configuration and Helpers
-# ==========================
+
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8080
 DEFAULT_MAX_THREADS = 10
@@ -44,7 +31,7 @@ PENDING_QUEUE_LIMIT = 100
 
 def rfc7231_date() -> str:
     """Return current time in RFC 7231 (HTTP-date) format, always in UTC."""
-    # Use timezone-aware UTC to avoid deprecation warning
+    # Use timezone-aware UTC 
     return datetime.datetime.now(datetime.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
 
 
@@ -94,9 +81,9 @@ def ensure_directories() -> None:
     os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 
-# ==========================
+
 # HTTP Parsing
-# ==========================
+
 class HttpRequest:
     """Container for parsed HTTP request data.
 
@@ -154,9 +141,9 @@ def parse_http_request(data: bytes) -> Optional[HttpRequest]:
         return None
 
 
-# ==========================
+
 # Security Helpers
-# ==========================
+
 def is_host_allowed(host_header: Optional[str], bound_host: str, bound_port: int) -> Tuple[bool, str]:
     """Validate Host header against the interface/port this server is bound to.
 
@@ -217,9 +204,9 @@ def guess_content_type(file_path: str) -> Tuple[str, bool, Optional[str]]:
     return "unsupported/unsupported", False, None
 
 
-# ==========================
+
 # Thread Pool
-# ==========================
+
 class Worker(threading.Thread):
     """A background thread that pulls client sockets from the queue and serves them."""
     def __init__(self, name: str, conn_queue: "queue.Queue[socket.socket]", handler):
@@ -283,9 +270,9 @@ class ThreadPool:
             return self._active_count, self.max_workers
 
 
-# ==========================
+
 # HTTP Server Logic
-# ==========================
+
 class HttpServer:
     """HTTP server with manual parsing, static file serving, and JSON uploads."""
     def __init__(self, host: str, port: int, max_threads: int):
@@ -446,7 +433,7 @@ class HttpServer:
                 pass
             client_sock.close()
 
-    # ============ Handlers ============
+    # Handlers
     def _handle_get(self, sock: socket.socket, req: HttpRequest, thread_name: str, keep_alive: bool) -> None:
         """Serve HTML from resources/ or stream binary files as attachments."""
         safe_path = resolve_safe_path(req.path)
@@ -562,7 +549,7 @@ class HttpServer:
         self._send_headers(sock, 201, "Created", headers)
         sock.sendall(body)
 
-    # ============ Low-level send helpers ============
+    #  Low-level send helpers
     def _send_headers(self, sock: socket.socket, status_code: int, reason: str, headers: Dict[str, str]) -> None:
         """Serialize and send the HTTP status line and headers."""
         status_line = f"HTTP/1.1 {status_code} {reason}\r\n"
